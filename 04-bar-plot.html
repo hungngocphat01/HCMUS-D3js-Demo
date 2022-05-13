@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <script src="https://d3js.org/d3.v7.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/d3-array@3"></script>
+   </head>
+
+   <style>
+      #svg-container {
+         border-style: solid;
+         border-color: black;
+         border-width: 2px;
+      }
+
+      svg rect {
+         fill: orange;
+         stroke-width: 1;
+         stroke: black;
+      }
+
+      svg {
+         padding: 10px;
+         width: 500px;
+      }
+   </style>
+   <body>
+      <h4>Population of several Vietnamese provinces (circa 2021)</h4>
+      <div>
+         <svg id="svg-container">
+         </svg>
+      </div>
+
+      <script>
+         let svg = d3.select('#svg-container');
+
+         let population = [
+            {'name': 'TP.HCM', 'value': 9.4},
+            {'name': 'Ha Noi', 'value': 8.4},
+            {'name': 'Da Nang', 'value': 1.1},
+            {'name': 'Dong Nai', 'value': 3.2},
+            {'name': 'Hai Phong', 'value': 2.0},
+            {'name': 'Thanh Hoa', 'value': 3.7},
+         ];
+
+         let barHeight = 30;
+         let padding = 5;
+         let scaleFactor = 30;
+         let labelWidth = 100;
+         let labelSpace = 5;
+
+         // Create scaler to map data to [0, 300] range
+         let scaler = d3.scaleLinear().domain([0, d3.max(population, (d) => d.value)]).range([0, 300]);
+
+         // Create bar containers (SVG group element)
+         let bars = svg.selectAll('g')
+            .data(population)
+            .enter()
+            .append('g')
+            .attr('transform', (d, i) => `translate(0, ${i * barHeight})`);
+         
+         // For each container, draw a rectange
+         bars.append('rect')
+            .attr('width', (d) => scaler(d.value))
+            .attr('transform', (d, i) => `translate(${labelWidth}, 0)`)
+            .attr('height', barHeight - padding);
+
+         // For each container, insert label
+         bars.append('text')
+            .text((d, i) => d.name)
+            .attr('y', barHeight / 2)
+            .attr('align', 'right');
+         
+         bars.append('text')
+            .text((d, i) => d.value)
+            .attr('x', (d, i) => scaler(d.value) + labelWidth + labelSpace)
+            .attr('y', barHeight / 2);
+
+      </script>
+   </body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <script src="https://d3js.org/d3.v7.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/d3-array@3"></script>
+   </head>
+
+   <style>
+   </style>
+   <body>
+      <script>
+         let [width, height, margin] = [450, 450, 40];
+         let radius = Math.min(width, height) / 2 - margin;
+
+         // Insert SVG container
+         let svg = d3.select('body').append('div').append('svg').attr('id', 'svg-container').attr('width', 1000).attr('height', 1000);
+         
+         let container = svg.append('g')
+            .attr('transform', `translate(${width / 2}, ${height / 2})`);
+
+         let data = [90, 90, 40, 30, 20];
+         let labels = ['khmt', 'ktpm', 'httt', 'mmt', 'tgmt'];
+     
+         // Create color map
+         let color = d3.scaleOrdinal().domain(data).range(d3.schemeSet2);
+         // Create pie data
+         let dataReady = d3.pie()(data);
+
+         // 
+         let arcGenerator = d3.arc().innerRadius(0).outerRadius(radius);
+
+         // Draw pie chart 
+         container.selectAll('mySlices')
+            .data(dataReady)
+            .enter()
+            .append('path')
+               .attr('d', arcGenerator)
+               .attr('fill', (d) => color(d))
+               .attr('stroke', 'black')
+               .style('stroke-width', '2px');
+               
+         container.selectAll('mySlices')
+            .data(dataReady)
+            .enter()
+            .append('text')
+            .text((d, i) => labels[i].toUpperCase())
+            .attr('transform', (d) => `translate(${arcGenerator.centroid(d)})`)
+            .style('text-anchor', 'middle')
+            .style('font-size', 17)
+            .style('font-family', 'Arial');
+
+      </script>
+   </body>
+</html>

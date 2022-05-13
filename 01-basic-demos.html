@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <script src="https://d3js.org/d3.v7.min.js"></script>
+   </head>
+   <body>
+      <div>
+         <svg id="rect-container" width="500" height="500">
+         </svg>
+      </div>
+
+      <div>
+         <svg id="circle-container" width="500" height="500">
+         </svg>
+      </div>
+
+      <div>
+         <svg id="line-container" width="500" height="500">
+         </svg>
+      </div>
+
+
+      <script>
+         d3.select('#circle-container')
+            .append('circle')
+            .attr('id', 'circle')
+            .attr('r', 40)
+            .attr('cx', 100)
+            .attr('cy', 100)
+            .attr('stroke', 'black')
+            .attr('stroke-width', 3)
+            .attr('fill', 'green');
+
+         d3.select('#rect-container')
+            .append('rect')
+            .attr('id', 'rect')
+            .attr('fill', 'red')
+            .attr('height', 300)
+            .attr('width', 200);
+
+         d3.select('#line-container')
+            .append('line')
+            .attr('id', 'line')
+            .attr('x1', 0)
+            .attr('y1', 0)
+            .attr('x2', 150)
+            .attr('y2', 300)
+            .attr('stroke', 'black')
+            .attr('stroke-width', 3);
+
+      </script>
+   </body>
+</html>

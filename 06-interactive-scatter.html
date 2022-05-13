@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <script src="https://d3js.org/d3.v7.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.5.3/math.js"></script>
+   </head>
+
+   <style>
+      #svg-container {
+         border-style: solid;
+         border-color: black;
+         border-width: 2px;
+      }
+
+      /* #left-svg {
+         border-style: solid;
+         border-color: red;
+         border-width: 2px;
+      }
+
+      #bottom-svg {
+         border-style: solid;
+         border-color: blue;
+         border-width: 2px;
+      } */
+
+      #horiz-group {
+         display: flex;
+         flex-direction: row;
+         align-items: center;
+      }
+
+      #vert-group {
+         display: flex;
+         flex-direction: column;
+         align-items: right;
+      }
+   </style>
+   <body>
+      <div>
+         <p>MouseX: <span id="mouse-x"></span></p>
+         <p>MouseY: <span id="mouse-y"></span></p>
+         <p>Number of dots: <span id="dots-num"></span></p>
+         <div>
+            Polynomial degree
+            <input type="number" value="1" id="poly-degree"/>
+            <input type="button" value="Regression" id="regression-btn"/>
+         </div>
+         <div>
+            Regression line color
+            <input type="text" value="blue" id="line-color"/>
+         </div>
+      </div>
+
+      <div>
+         <div id="vert-group">
+            <div id="horiz-group">
+               <svg id="left-svg"></svg>
+               <svg id="svg-container"></svg>
+            </div>
+            <svg id="bottom-svg"></svg>
+         </div>
+
+      </div>
+
+      <script>
+         let dots = [];
+         let [width, height] = [450, 450];
+         let padding = 30;
+
+         let svg = d3.select('#svg-container')
+            .attr('width', width)
+            .attr('height', height);
+         
+         let leftSvg = d3.select('#left-svg')
+            .attr('height', height + 20)
+            .attr('width', 40);
+
+         let botSvg = d3.select('#bottom-svg')
+            .attr('height', 20)
+            .attr('width', width + 60);
+
+         // Puts a dot on the screen and save it coords
+         function dotClickHandler(e) {
+            let [mouseX, mouseY] = d3.pointer(e, svg.node());
+            // Remove event listener
+            currentDot.on('click', function(){});
+            // Change color
+            currentDot.attr('fill', 'green');
+            // Create a new dot to follow the cursor
+            currentDot = createDot();
+            // Save the coordinate
+            dots = [...dots, [mouseX, mouseY]];
+            // Update count
+            d3.select('#dots-num').text(dots.length);
+         }
+
+         // Create a new moving dot
+         function createDot() {
+            let dot = svg.append('circle')
+            .attr('id', 'dot')
+            .attr('r', 3)
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('fill', 'red');
+            dot.on('click', dotClickHandler);
+            return dot;
+         }
+
+         // Initialize first dot
+         let currentDot = createDot();
+
+         // Initialize axes
+         let xScale = d3.scaleLinear().domain([0, width]).range([0, width]);
+         let yScale = d3.scaleLinear().domain([0, height]).range([height, 0]);
+
+         leftSvg.append('g')
+            .attr('transform', 'translate(30, 10)')
+            .call(d3.axisLeft(yScale));
+         
+         botSvg.append('g')
+            .attr('transform', 'translate(45, 0)')
+            .call(d3.axisBottom(xScale));
+
+         // Event listener to make the dot follow the mouse
+         svg.on('mousemove', function(e) {
+               let [mouseX, mouseY] = d3.pointer(e, svg.node());
+               // console.log(mouseX, mouseY);
+               
+               currentDot.attr('cx', mouseX);
+               currentDot.attr('cy', mouseY);
+               d3.select('#mouse-x').text(Math.round(mouseX));
+               d3.select('#mouse-y').text(Math.round(height - mouseY));
+         });
+
+         // Event listener to do regression
+         d3.select('#regression-btn').on('click', function() {
+            // Get polynomial degree
+            let degree = d3.select('#poly-degree').node().value;
+
+            // Extract x and y features
+            let x = dots.map((d) => d[0]);
+            let y = dots.map((d) => d[1]);
+            
+            // Create vertical vector y
+            y = math.matrix(y).reshape([-1, 1]);
+            
+            // Create features for matrix X
+            function polyFeatures(x, degree) {
+               let X = [math.ones(x.length)._data];
+               for (let i = 1; i <= degree; i++) {
+                  X = [...X, math.dotPow(x, i)];
+               }
+               X = math.transpose(math.matrix(X));
+               return X;
+            }
+
+            let X = polyFeatures(x, degree);
+
+            // Fit model 
+            let theta = math.multiply(math.pinv(X), y);
+            
+            // Create test data
+            let t = math.range(0, width, 0.1)._data;
+            let T = polyFeatures(t, degree);
+            // Predict
+            let yhat = math.flatten(math.multiply(T, theta))._data;
+            // console.log(yhat);
+
+            // Plot curve
+            let lineColor = d3.select('#line-color').node().value;
+
+            for (let i = 1; i < yhat.length; i++) {
+               svg.append('line')
+                  .attr('x1', t[i - 1])
+                  .attr('y1', yhat[i - 1])
+                  .attr('x2', t[i])
+                  .attr('y2', yhat[i])
+                  .style('stroke', lineColor)
+                  .style('stroke-width', 1);
+            }
+         });
+      </script>
+   </body>
+</html>
