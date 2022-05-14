@@ -39,8 +39,18 @@
       #legend {
          padding-left: 10px;
       }
+
+      footer {
+         padding-top: 10px;
+         font-size: small;
+      }
    </style>
    <body>
+      <header>
+         <h1>Polynomial Regression Demo, D3.js</h1>
+         <p><b>Intelligent Data Analysis final project</b></p>
+      </header>
+
       <div>
          <p>Mouse: (<span id="mouse-x"></span>, <span id="mouse-y"></span>)</p>
          <p>Number of dots: <span id="dots-num">0</span></p>
@@ -53,11 +63,25 @@
             <input type="text" value="blue" id="line-color"/>
             <input type="button" value="Regression" id="regression-btn"/>
          </div>
-         <!-- <div>
-            Max range
-            <input type="text" value="300" id="max-range"/>
-            <input type="button" value="Update" id="range-upd-btn"/>
-         </div> -->
+
+         <a id="advanced-opt-toggle" href="#">Toggle advanced options</a>
+         <div id="advanced-opt" style="display: none;">
+            <div>
+               Regularization (&lambda;)
+               <input type="text" value="0" id="reg-lambda"/>
+            </div>
+            <div>
+               Plot tick
+               <input type="text" value="0.1" id="plot-tick"/>
+               <small>Curves are approximated by small lines. This parameter controls the length of each line.</small>
+            </div>
+            <div>
+               Axis range
+               <input type="text" value="0" id="min-range"/>
+               <input type="text" value="10" id="max-range"/>
+               <input type="button" value="Update" id="range-upd-btn"/>
+            </div>
+         </div>
          <div>
             <input type="button" value="Clear lines" id="clearline-btn"/>
             <input type="button" value="Clear all" id="clearall-btn"/>
@@ -78,10 +102,18 @@
          </div>
       </div>
 
+      <footer>
+         This tool comes with no guarantee! E.g. no data validation<br>
+         By Group 25, Intelligent Data Analysis 19_21, FIT@HCMUS.
+      </footer>
+
       <script>
          let dots = [];
          let renderSize = 450;
-         let dataRange = 300;
+         let dataRange = {
+            from: 0,
+            to: 0
+         };
          let padding = 30;
 
          let svg = d3.select('#svg-container')
@@ -107,7 +139,7 @@
             // Create a new dot to follow the cursor
             currentDot = createDot();
             // Save the coordinate
-            dots = [...dots, [dataScale(mouseX), dataScale(mouseY)]];
+            dots = [...dots, [xRenderData(mouseX), yRenderData(mouseY)]];
             // Update count
             d3.select('#dots-num').text(dots.length);
          }
@@ -128,18 +160,28 @@
          let currentDot = createDot();
 
          // Initialize axes
-         let xAxisScale = d3.scaleLinear().domain([0, dataRange]).range([0, renderSize]);
-         let yAxisScale = d3.scaleLinear().domain([0, dataRange]).range([renderSize, 0]);
+         function createScales(dataRange, renderSize) {
+            let range = [dataRange.from, dataRange.to];
+            let xDataRender = d3.scaleLinear().domain(range).range([0, renderSize]);
+            let xRenderData = d3.scaleLinear().domain([0, renderSize]).range(range);
 
-         let dataScale = d3.scaleLinear().domain([0, renderSize]).range([0, dataRange]);
+            let yDataRender = d3.scaleLinear().domain(range).range([renderSize, 0]);
+            let yRenderData = d3.scaleLinear().domain([renderSize, 0]).range(range);
+
+            return [xDataRender, xRenderData, yDataRender, yRenderData];
+         }
+         
+         dataRange.from = d3.select('#min-range').node().value;
+         dataRange.to = d3.select('#max-range').node().value;
+         let [xDataRender, xRenderData, yDataRender, yRenderData] = createScales(dataRange, renderSize);
 
          leftSvg.append('g')
             .attr('transform', 'translate(30, 10)')
-            .call(d3.axisLeft(yAxisScale));
+            .call(d3.axisLeft(yDataRender));
          
          botSvg.append('g')
             .attr('transform', 'translate(45, 0)')
-            .call(d3.axisBottom(xAxisScale));
+            .call(d3.axisBottom(xDataRender));
 
          // Event listener to make the dot follow the mouse
          svg.on('mousemove', function(e) {
@@ -148,8 +190,8 @@
                
                currentDot.attr('cx', mouseX);
                currentDot.attr('cy', mouseY);
-               d3.select('#mouse-x').text(Math.round(dataScale(mouseX)));
-               d3.select('#mouse-y').text(Math.round(dataScale(renderSize - mouseY)));
+               d3.select('#mouse-x').text(Math.round(xRenderData(mouseX)));
+               d3.select('#mouse-y').text(Math.round(yRenderData(mouseY)));
          });
 
          // Event listener to do regression
@@ -175,39 +217,59 @@
             }
 
             let X = polyFeatures(x, degree);
+            let lambda = d3.select('#reg-lambda').node().value;
 
-            // Fit model 
-            let theta = math.multiply(math.pinv(X), y);
+            // Fit model
+            // (X.T * X + lambda * I)-1 * X.T * y
+            let Xt = math.transpose(X);
+            let XtX = math.multiply(Xt, X);
+
+            let lambdaI = math.multiply(lambda, math.identity(XtX.size()[0]));
+
+            let Xdagger = math.inv(math.add(XtX, lambdaI));
+            Xdagger = math.multiply(Xdagger, Xt);
+
+            let theta = math.multiply(Xdagger, y);
             
             // Create test data
-            let t = math.range(0, dataRange, 1)._data;
+            let tick = d3.select('#plot-tick').node().value;
+            let t = math.range(dataRange.from, dataRange.to + tick, tick)._data;
             let T = polyFeatures(t, degree);
+
             // Predict
             let yhat = math.flatten(math.multiply(T, theta))._data;
             // console.log(yhat);
 
-            // Plot curve
             let lineColor = d3.select('#line-color').node().value;
+            if (!lineColor) {
+               lineColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+            }
 
-            for (let i = 1; i < yhat.length; i++) {
+            for (let i = 1; i <= yhat.length; i++) {
                svg.append('line')
+                  .attr('class', `degree-${degree}`)
+                  .datum({
+                     'x1': t[i - 1],
+                     'y1': yhat[i - 1],
+                     'x2': t[i],
+                     'y2': yhat[i]
+                  })
                   .transition()
                   .ease(d3.easeCubic)
                   .duration(500)
-                  .attr('x1', xAxisScale(t[i - 1]))
-                  .attr('y1', xAxisScale(yhat[i - 1]))
-                  .attr('x2', xAxisScale(t[i]))
-                  .attr('y2', xAxisScale(yhat[i]))
+                  .attr('x1', (d) => xDataRender(d.x1))
+                  .attr('y1', (d) => yDataRender(d.y1))
+                  .attr('x2', (d) => xDataRender(d.x2))
+                  .attr('y2', (d) => yDataRender(d.y2))
                   .style('stroke', lineColor)
                   .style('stroke-width', 2)
                   .attr('class', 'regline');
-
             }
-
+            
             d3.select('#legend').select('ul')
                .append('li')
                .attr('class', 'legend-li')
-               .text(`${lineColor}: degree ${degree}`)
+               .html(`${lineColor}: d=${degree}, &lambda;=${lambda}`)
                .style('color', lineColor);
          });
 
@@ -236,6 +298,50 @@
          // Callback for clear line
          d3.select('#clearline-btn').on('click', function() {
             clearLines();
+         });
+
+         // Callback for advanced options
+         d3.select('#advanced-opt-toggle').on('click', function() {
+            let show = d3.select('#advanced-opt').style('display');
+
+            if (show == 'none') {
+               d3.select('#advanced-opt').style('display', 'block');
+            } else {
+               d3.select('#advanced-opt').style('display', 'none');
+            }
+         });
+
+         // Callback for range update
+         d3.select('#range-upd-btn').on('click', function() {
+            dataRange.from = d3.select('#min-range').node().value;
+            dataRange.to = d3.select('#max-range').node().value;
+            
+            // Update ranges
+            [xDataRender, xRenderData, yDataRender, yRenderData] = createScales(dataRange, renderSize);
+            
+            // Update axis
+            leftSvg.select('g')
+               .transition()
+               .call(d3.axisLeft(yDataRender));
+            
+            botSvg.select('g')
+               .transition()
+               .call(d3.axisBottom(xDataRender));
+               
+            // Update datapoints
+            d3.selectAll('.static-point')
+               .data(dots)
+               .transition()
+               .attr('cx', (d) => xDataRender(d[0]))
+               .attr('cy', (d) => yDataRender(d[1]));
+            
+            // Update regression lines
+            d3.selectAll('.regline')
+               .transition()
+               .attr('x1', (d) => xDataRender(d.x1))
+               .attr('y1', (d) => yDataRender(d.y1))
+               .attr('x2', (d) => xDataRender(d.x2))
+               .attr('y2', (d) => yDataRender(d.y2));
          });
       </script>
    </body>
