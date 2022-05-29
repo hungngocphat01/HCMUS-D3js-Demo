@@ -37,7 +37,7 @@
          // Add mouse position listener
          d3.select('#svg-container')
             .on('mousemove', function(e) {
-               let [mouseX, mouseY] = d3.mouse(d3.select('#svg-container').node());
+               let [mouseX, mouseY] = d3.pointer(e, d3.select('#svg-container').node());
                console.log(mouseX, mouseY);
                
                dot.attr('cx', mouseX);
