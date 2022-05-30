@@ -235,16 +235,20 @@
 
             let Xdagger = math.inv(math.add(XtX, lambdaI));
             Xdagger = math.multiply(Xdagger, Xt);
+            // let Xdagger = math.pinv(X);
 
             let theta = math.multiply(Xdagger, y);
             
             // Create test data
             let tick = d3.select('#plot-tick').node().value;
-            let t = math.range(dataRange.from, dataRange.to + tick, tick)._data;
+            let t = math.range(dataRange.from - tick, dataRange.to + tick, tick)._data;
+            // console.log('t length', t.length);
+
             let T = polyFeatures(t, degree);
 
             // Predict
             let yhat = math.flatten(math.multiply(T, theta))._data;
+            // console.log('yhat length', yhat.length);
             // console.log(yhat);
 
             let lineColor = d3.select('#line-color').node().value;
@@ -252,7 +256,7 @@
                lineColor = '#' + Math.floor(Math.random()*16777215).toString(16);
             }
 
-            for (let i = 1; i <= yhat.length; i++) {
+            for (let i = 1; i < yhat.length; i++) {
                svg.append('line')
                   .attr('class', `degree-${degree}`)
                   .datum({
